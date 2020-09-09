@@ -42,10 +42,8 @@ func watchEventCb(event zk.Event) {
 				return
 			}
 			log.Println("login:", string(data))
-		}()
 
-		go func() {
-			_, err := center.Watch(event.Path)
+			_, err = center.Watch(event.Path)
 			if err != nil {
 				log.Println(err)
 				return
@@ -78,7 +76,7 @@ func (s *Service) Start() error {
 			if x := recover(); x != nil {
 				log.Println(x)
 			}
-			log.Println("game service exit")
+			log.Println("login service exit")
 		}()
 
 		for {

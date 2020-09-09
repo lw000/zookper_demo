@@ -42,10 +42,8 @@ func watchEventCb(event zk.Event) {
 				return
 			}
 			log.Println("game:", string(data))
-		}()
 
-		go func() {
-			_, err := center.Watch(event.Path)
+			_, err = center.Watch(event.Path)
 			if err != nil {
 				log.Println(err)
 				return

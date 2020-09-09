@@ -4,6 +4,7 @@ import (
 	"demo/zookper_demo/consts"
 	"demo/zookper_demo/global"
 	"demo/zookper_demo/zkserve"
+
 	"github.com/samuel/go-zookeeper/zk"
 	"log"
 	"time"
@@ -27,7 +28,7 @@ func New() *Service {
 	}
 }
 
-func watchEventCb(event zk.Event) {
+func (s *Service) watchEventCb(event zk.Event) {
 	// log.Println("hall >>>>>>>>>>>>>>>>>>>>>>")
 	// log.Println("hall path:", event.Path)
 	// log.Println("hall type:", event.Type)
@@ -42,10 +43,8 @@ func watchEventCb(event zk.Event) {
 				return
 			}
 			log.Println("hall:", string(data))
-		}()
 
-		go func() {
-			_, err := center.Watch(event.Path)
+			_, err = center.Watch(event.Path)
 			if err != nil {
 				log.Println(err)
 				return
@@ -55,7 +54,8 @@ func watchEventCb(event zk.Event) {
 }
 
 func (s *Service) Start() error {
-	err := center.ConnectWithWatcher(global.ZKHosts, time.Second*60, watchEventCb)
+
+	err := center.ConnectWithWatcher(global.ZKHosts, time.Second*60, s.watchEventCb)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -73,23 +73,26 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	go func() {
-		defer func() {
-			if x := recover(); x != nil {
-				log.Println(x)
-			}
+	go s.Run()
 
-			log.Println("game service exit")
-		}()
-
-		for {
-			select {
-			case <-s.quit:
-				return
-			}
-		}
-	}()
 	return nil
+}
+
+func (s *Service) Run() {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Println(x)
+		}
+
+		log.Println("hall service exit")
+	}()
+
+	for {
+		select {
+		case <-s.quit:
+			return
+		}
+	}
 }
 
 func (s *Service) Stop() {

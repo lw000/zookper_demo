@@ -5,8 +5,10 @@ import (
 	"demo/zookper_demo/global"
 	"demo/zookper_demo/zkserve"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/samuel/go-zookeeper/zk"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -28,7 +30,7 @@ func New() *Service {
 	}
 }
 
-func (s *Service) Start() error {
+func (s *Service) init() error {
 	err := center.Connect(global.ZKHosts, time.Second*60)
 	if err != nil {
 		log.Println(err)
@@ -52,6 +54,17 @@ func (s *Service) Start() error {
 		log.Println(err)
 		return err
 	}
+	return nil
+}
+
+func (s *Service) Start() error {
+	err := s.init()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	go s.Run()
 
 	go s.pushGameConfig()
 	go s.pushHallConfig()
@@ -60,13 +73,34 @@ func (s *Service) Start() error {
 	return nil
 }
 
+func (s *Service) Run() {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Println(x)
+		}
+
+		log.Println("master service exit")
+	}()
+
+	// gin.SetMode(gin.ReleaseMode)
+
+	engine := gin.Default()
+	engine.GET("/api/sync", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "sync config success", "data": gin.H{}})
+	})
+	err := engine.Run(":9200")
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func (s *Service) pushHallConfig() {
 	defer func() {
 		if x := recover(); x != nil {
 			log.Println(x)
 		}
 
-		log.Println("pushHallConfig quit")
+		log.Println("master pushHallConfig quit")
 	}()
 
 	ticker := time.NewTicker(time.Second)
@@ -92,7 +126,7 @@ func (s *Service) pushGameConfig() {
 			log.Println(x)
 		}
 
-		log.Println("pushGameConfig quit")
+		log.Println("master pushGameConfig quit")
 	}()
 
 	ticker := time.NewTicker(time.Second * 2)
@@ -118,7 +152,7 @@ func (s *Service) pushLoginConfig() {
 			log.Println(x)
 		}
 
-		log.Println("pushLoginConfig quit")
+		log.Println("master pushLoginConfig quit")
 	}()
 
 	ticker := time.NewTicker(time.Second * 3)
