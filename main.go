@@ -10,7 +10,6 @@ import (
 	"demo/zookper_demo/zkserve"
 	"github.com/judwhite/go-svc/svc"
 	"log"
-	"os"
 	"time"
 )
 
@@ -120,22 +119,21 @@ func main() {
 	// signal.Notify(c,os.Interrupt,os.Kill)
 	// log.Println(<-c)
 
-	f, err := os.Create("./log/log.log")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	logger = log.New(f, "", log.Llongfile)
-
-	go func() {
-		for i := 0; i < 100; i++ {
-			logger.Println(time.Now().Format("2006-01-02 15:04:05.000000000"), "this is test write file")
-		}
-	}()
+	// f, err := os.Create("./log/log.log")
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	//
+	// logger = log.New(f, "", log.Llongfile)
+	//
+	// go func() {
+	// 	for i := 0; i < 100; i++ {
+	// 		logger.Println(time.Now().Format("2006-01-02 15:04:05.000000000"), "this is test write file")
+	// 	}
+	// }()
 
 	var pro Program
-	err = svc.Run(&pro)
-	if err != nil {
-		log.Panic(err)
+	if err := svc.Run(&pro); err != nil {
+		log.Fatalln(err)
 	}
 }

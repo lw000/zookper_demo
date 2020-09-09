@@ -126,6 +126,7 @@ func (s *Service) Run() {
 		log.Println("hall service exit")
 	}()
 	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:

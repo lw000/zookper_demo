@@ -119,8 +119,17 @@ func (s *Service) Start() error {
 			log.Println("game service exit")
 		}()
 
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
 		for {
 			select {
+			case <-ticker.C:
+				go func() {
+					d, err := s.center.Children(consts.ZookeeperKeyGameRoot)
+					if err == nil {
+						log.Println(d)
+					}
+				}()
 			case <-s.quit:
 				return
 			}
