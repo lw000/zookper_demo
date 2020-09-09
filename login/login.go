@@ -60,6 +60,11 @@ func (s *Service) watchEventCb(event zk.Event) {
 	}
 }
 
+func (s *Service) Register(servername string) error {
+
+	return nil
+}
+
 func (s *Service) Start() error {
 	var err error
 	err = s.init()

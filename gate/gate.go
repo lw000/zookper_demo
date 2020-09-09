@@ -52,6 +52,11 @@ func watchEventCb(event zk.Event) {
 	}
 }
 
+func (s *Service) Register(servername string) error {
+
+	return nil
+}
+
 func (s *Service) Start() error {
 	err := center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, watchEventCb)
 	if err != nil {

@@ -58,7 +58,7 @@ func (zkc *ZkCenter) Create(nodePath string, flags int32, perm int32) error {
 		// 0:永久，除非手动删除
 		// zk.FlagEphemeral = 1:短暂，session断开则该节点也被删除
 		// zk.FlagSequence  = 2:会自动在节点后面添加序号
-		// 3:Ephemeral和Sequence，即，短暂且自动添加序号
+		// zk.Ephemeral | zk.Sequence = 3，即，短暂且自动添加序号
 		// var flags int32 = 0 // zk.FlagEphemeral | zk.FlagSequence
 		var acl = zk.WorldACL(perm) // 表示该节点没有权限限制
 		p, err := zkc.conn.Create(nodePath, nil, flags, acl)
@@ -78,6 +78,11 @@ func (zkc *ZkCenter) Exists(nodePath string) (bool, *zk.Stat) {
 		return false, nil
 	}
 	return exist, state
+}
+
+// sync zookeeper data
+func (zkc *ZkCenter) Sync(nodePath string) (string, error) {
+	return zkc.conn.Sync(nodePath)
 }
 
 // read zookeeper data

@@ -14,6 +14,8 @@ const (
 	ZookeeperKeyLogin = "/zk_config_login"
 
 	ZookeeperKeyGate = "/zk_config_gate"
+
+	ZookeeperKeyHallBase = "/zk_config_halls"
 )
 
 const (

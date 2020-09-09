@@ -58,6 +58,11 @@ func (p *Program) Start() error {
 		log.Println(err)
 		return err
 	}
+	// err = p.hallService.Register("a")
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return err
+	// }
 
 	err = p.loginService.Start()
 	if err != nil {
