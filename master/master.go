@@ -4,7 +4,7 @@ import (
 	"demo/zookper_demo/consts"
 	"demo/zookper_demo/global"
 	"demo/zookper_demo/zkserve"
-	"fmt"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/samuel/go-zookeeper/zk"
 	"log"
@@ -31,7 +31,7 @@ func New() *Service {
 }
 
 func (s *Service) init() error {
-	err := center.Connect(global.ZKHosts, time.Second*60)
+	err := center.Connect(global.ZookeeperHosts, time.Second*60)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -107,11 +107,19 @@ func (s *Service) pushHallConfig() {
 	for {
 		select {
 		case <-ticker.C:
-			var s = fmt.Sprintf(`{"a":10,"b":123131231,"c":"123231232131313","d":123231.2222,"t":%s}`,
-				time.Now().Format("2006-01-02 15:04:05.000000"))
-			err := center.Write(consts.ZookeeperKeyHall, []byte(s))
-			if err != nil {
-				log.Println(err)
+			m := make(map[string]interface{})
+			m["a"] = "10"
+			m["b"] = 10
+			m["c"] = 20.20
+			m["d"] = true
+			m["e"] = time.Now().Format("2006-01-02 15:04:05.000000")
+			m["node"] = consts.ZookeeperKeyHall
+			data, err := json.Marshal(m)
+			if err == nil {
+				err = center.Write(consts.ZookeeperKeyHall, data)
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		case <-s.quit:
 			ticker.Stop()
@@ -133,11 +141,19 @@ func (s *Service) pushGameConfig() {
 	for {
 		select {
 		case <-ticker.C:
-			var s = fmt.Sprintf(`{"a":10,"b":123131231,"c":"123231232131313","d":123231.2222,"t":%s}`,
-				time.Now().Format("2006-01-02 15:04:05.000000"))
-			err := center.Write(consts.ZookeeperKeyGame, []byte(s))
-			if err != nil {
-				log.Println(err)
+			m := make(map[string]interface{})
+			m["a"] = "10"
+			m["b"] = 10
+			m["c"] = 20.20
+			m["d"] = true
+			m["e"] = time.Now().Format("2006-01-02 15:04:05.000000")
+			m["node"] = consts.ZookeeperKeyGame
+			data, err := json.Marshal(m)
+			if err == nil {
+				err = center.Write(consts.ZookeeperKeyGame, data)
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		case <-s.quit:
 			ticker.Stop()
@@ -159,11 +175,19 @@ func (s *Service) pushLoginConfig() {
 	for {
 		select {
 		case <-ticker.C:
-			var s = fmt.Sprintf(`{"a":10,"b":123131231,"c":"123231232131313","d":123231.2222,"t":%s}`,
-				time.Now().Format("2006-01-02 15:04:05.000000"))
-			err := center.Write(consts.ZookeeperKeyLogin, []byte(s))
-			if err != nil {
-				log.Println(err)
+			m := make(map[string]interface{})
+			m["a"] = "10"
+			m["b"] = 10
+			m["c"] = 20.20
+			m["d"] = true
+			m["e"] = time.Now().Format("2006-01-02 15:04:05.000000")
+			m["node"] = consts.ZookeeperKeyLogin
+			data, err := json.Marshal(m)
+			if err == nil {
+				err = center.Write(consts.ZookeeperKeyLogin, data)
+				if err != nil {
+					log.Println(err)
+				}
 			}
 		case <-s.quit:
 			ticker.Stop()

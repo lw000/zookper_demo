@@ -53,7 +53,7 @@ func watchEventCb(event zk.Event) {
 }
 
 func (s *Service) Start() error {
-	err := center.ConnectWithWatcher(global.ZKHosts, time.Second*60, watchEventCb)
+	err := center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, watchEventCb)
 	if err != nil {
 		log.Println(err)
 		return err
