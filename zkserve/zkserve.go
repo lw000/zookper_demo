@@ -47,7 +47,7 @@ func (zkc *ZkCenter) ConnectWithWatcher(hosts []string, sessionTimeout time.Dura
 	return nil
 }
 
-func (zkc *ZkCenter) ZkClose() {
+func (zkc *ZkCenter) Close() {
 	zkc.conn.Close()
 }
 

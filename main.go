@@ -7,6 +7,7 @@ import (
 	"demo/zookper_demo/kfka"
 	"demo/zookper_demo/login"
 	"demo/zookper_demo/master"
+	"demo/zookper_demo/zkserve"
 	"github.com/judwhite/go-svc/svc"
 	"log"
 	"os"
@@ -18,11 +19,12 @@ var (
 )
 
 type Program struct {
-	master_service *master.Service
-	hall_service   *hall.Service
-	login_service  *login.Service
-	game_service   *game.Service
-	gate_service   *gate.Service
+	center        *zkserve.ZkCenter
+	masterService *master.Service
+	hallService   *hall.Service
+	loginService  *login.Service
+	gameService   *game.Service
+	gateService   *gate.Service
 }
 
 func (p *Program) Init(env svc.Environment) error {
@@ -31,43 +33,45 @@ func (p *Program) Init(env svc.Environment) error {
 	} else {
 
 	}
+	p.center = zkserve.New()
 
-	p.master_service = master.New()
-	p.hall_service = hall.New()
-	p.login_service = login.New()
-	p.game_service = game.New()
-	p.gate_service = gate.New()
+	p.masterService = master.New()
+	p.hallService = hall.New()
+	p.loginService = login.New()
+	p.gameService = game.New()
+	p.gateService = gate.New()
+
 	return nil
 }
 
 func (p *Program) Start() error {
 	var err error
 
-	err = p.master_service.Start()
+	err = p.masterService.Start()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = p.hall_service.Start()
+	err = p.hallService.Start()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = p.login_service.Start()
+	err = p.loginService.Start()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = p.game_service.Start()
+	err = p.gameService.Start()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = p.gate_service.Start()
+	err = p.gateService.Start()
 	if err != nil {
 		log.Println(err)
 		return err
@@ -84,11 +88,11 @@ func (p *Program) Start() error {
 }
 
 func (p *Program) Stop() error {
-	p.master_service.Stop()
-	p.hall_service.Stop()
-	p.login_service.Stop()
-	p.game_service.Stop()
-	p.gate_service.Stop()
+	p.masterService.Stop()
+	p.hallService.Stop()
+	p.loginService.Stop()
+	p.gameService.Stop()
+	p.gateService.Stop()
 	time.Sleep(time.Millisecond * 20)
 	return nil
 }
