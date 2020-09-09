@@ -5,6 +5,7 @@ import (
 	"demo/zookper_demo/global"
 	"demo/zookper_demo/zkserve"
 	"fmt"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/samuel/go-zookeeper/zk"
@@ -13,13 +14,14 @@ import (
 )
 
 var (
-	hall_svr_id int32 = 0
+	hallSvrId int32 = 0
 )
 
 type Service struct {
-	svr_id int32
-	center *zkserve.ZkCenter
-	quit   chan int
+	registerNodeName string
+	svrId            int32
+	center           *zkserve.ZkCenter
+	quit             chan int
 }
 
 func init() {
@@ -28,7 +30,7 @@ func init() {
 
 func New() *Service {
 	return &Service{
-		svr_id: atomic.AddInt32(&hall_svr_id, 1),
+		svrId:  atomic.AddInt32(&hallSvrId, 1),
 		center: zkserve.New(),
 		quit:   make(chan int, 1),
 	}
@@ -69,9 +71,15 @@ func (s *Service) watchEventCb(event zk.Event) {
 	}
 }
 
-func (s *Service) Register(servername string) error {
-	nodePath := fmt.Sprintf("%s/%s", consts.ZookeeperKeyHallBase, servername)
-	err := s.center.Create(nodePath, zk.FlagEphemeral, zk.PermAll)
+func (s *Service) register(servername string) error {
+	err := s.center.Create(consts.ZookeeperKeyHallRoot, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	s.registerNodeName = fmt.Sprintf("%s/hall_%s", consts.ZookeeperKeyHallRoot /*servername*/, strconv.Itoa(int(s.svrId)))
+	err = s.center.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -86,7 +94,7 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	_, err = s.center.Watch(consts.ZookeeperKeyHallBase)
+	err = s.register("")
 	if err != nil {
 		log.Println(err)
 		return err
@@ -99,12 +107,6 @@ func (s *Service) Start() error {
 	}
 
 	err = s.center.Create(consts.ZookeeperKeyHall, 0, zk.PermRead)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.center.Create(consts.ZookeeperKeyHallBase, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -123,9 +125,16 @@ func (s *Service) Run() {
 
 		log.Println("hall service exit")
 	}()
-
+	ticker := time.NewTicker(time.Second)
 	for {
 		select {
+		case <-ticker.C:
+			go func() {
+				d, err := s.center.Children(consts.ZookeeperKeyHallRoot)
+				if err == nil {
+					log.Println(d)
+				}
+			}()
 		case <-s.quit:
 			return
 		}

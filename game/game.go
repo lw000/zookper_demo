@@ -4,14 +4,23 @@ import (
 	"demo/zookper_demo/consts"
 	"demo/zookper_demo/global"
 	"demo/zookper_demo/zkserve"
+	"fmt"
 	"github.com/samuel/go-zookeeper/zk"
 	"log"
+	"strconv"
+	"sync/atomic"
 	"time"
 )
 
+var (
+	gameSvrId int32 = 0
+)
+
 type Service struct {
-	center *zkserve.ZkCenter
-	quit   chan int
+	registerNodeName string
+	svrId            int32
+	center           *zkserve.ZkCenter
+	quit             chan int
 }
 
 func init() {
@@ -20,6 +29,7 @@ func init() {
 
 func New() *Service {
 	return &Service{
+		svrId:  atomic.AddInt32(&gameSvrId, 1),
 		center: zkserve.New(),
 		quit:   make(chan int, 1),
 	}
@@ -60,8 +70,19 @@ func (s *Service) watchEventCb(event zk.Event) {
 	}
 }
 
-func (s *Service) Register(servername string) error {
+func (s *Service) register(servername string) error {
+	err := s.center.Create(consts.ZookeeperKeyGameRoot, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 
+	s.registerNodeName = fmt.Sprintf("%s/game_%s", consts.ZookeeperKeyGameRoot /*servername*/, strconv.Itoa(int(s.svrId)))
+	err = s.center.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 	return nil
 }
 
@@ -71,6 +92,13 @@ func (s *Service) Start() error {
 	if err != nil {
 		return err
 	}
+
+	err = s.register("")
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	_, err = s.center.Watch(consts.ZookeeperKeyGame)
 	if err != nil {
 		log.Println(err)

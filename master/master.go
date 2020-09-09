@@ -102,6 +102,7 @@ func (s *Service) pushHallConfig() {
 	}()
 
 	ticker := time.NewTicker(time.Second)
+	ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -120,7 +121,6 @@ func (s *Service) pushHallConfig() {
 				}
 			}
 		case <-s.quit:
-			ticker.Stop()
 			return
 		}
 	}
@@ -136,6 +136,7 @@ func (s *Service) pushGameConfig() {
 	}()
 
 	ticker := time.NewTicker(time.Second * 2)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -154,7 +155,7 @@ func (s *Service) pushGameConfig() {
 				}
 			}
 		case <-s.quit:
-			ticker.Stop()
+
 			return
 		}
 	}
@@ -170,6 +171,7 @@ func (s *Service) pushLoginConfig() {
 	}()
 
 	ticker := time.NewTicker(time.Second * 3)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -188,7 +190,6 @@ func (s *Service) pushLoginConfig() {
 				}
 			}
 		case <-s.quit:
-			ticker.Stop()
 			return
 		}
 	}

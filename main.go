@@ -16,15 +16,17 @@ import (
 
 var (
 	logger *log.Logger
+	hallN  int = 5
+	gameN  int = 5
 )
 
 type Program struct {
 	center        *zkserve.ZkCenter
 	masterService *master.Service
-	hallService   *hall.Service
-	loginService  *login.Service
-	gameService   *game.Service
+	hallService   []*hall.Service
+	gameService   []*game.Service
 	gateService   *gate.Service
+	loginService  *login.Service
 }
 
 func (p *Program) Init(env svc.Environment) error {
@@ -36,10 +38,19 @@ func (p *Program) Init(env svc.Environment) error {
 	p.center = zkserve.New()
 
 	p.masterService = master.New()
-	p.hallService = hall.New()
-	p.loginService = login.New()
-	p.gameService = game.New()
+
+	p.hallService = make([]*hall.Service, 0)
+	for i := 0; i < hallN; i++ {
+		p.hallService = append(p.hallService, hall.New())
+	}
+
+	p.gameService = make([]*game.Service, 0)
+	for i := 0; i < gameN; i++ {
+		p.gameService = append(p.gameService, game.New())
+	}
+
 	p.gateService = gate.New()
+	p.loginService = login.New()
 
 	return nil
 }
@@ -53,27 +64,25 @@ func (p *Program) Start() error {
 		return err
 	}
 
-	err = p.hallService.Start()
-	if err != nil {
-		log.Println(err)
-		return err
+	for _, svr := range p.hallService {
+		err = svr.Start()
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 	}
-	// err = p.hallService.Register("a")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return err
-	// }
 
 	err = p.loginService.Start()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-
-	err = p.gameService.Start()
-	if err != nil {
-		log.Println(err)
-		return err
+	for _, svr := range p.gameService {
+		err = svr.Start()
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 
 	err = p.gateService.Start()
@@ -94,9 +103,13 @@ func (p *Program) Start() error {
 
 func (p *Program) Stop() error {
 	p.masterService.Stop()
-	p.hallService.Stop()
+	for _, svr := range p.hallService {
+		svr.Stop()
+	}
+	for _, svr := range p.gameService {
+		svr.Stop()
+	}
 	p.loginService.Stop()
-	p.gameService.Stop()
 	p.gateService.Stop()
 	time.Sleep(time.Millisecond * 20)
 	return nil

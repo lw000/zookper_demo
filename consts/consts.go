@@ -15,7 +15,9 @@ const (
 
 	ZookeeperKeyGate = "/zk_config_gate"
 
-	ZookeeperKeyHallBase = "/zk_config_halls"
+	ZookeeperKeyGameRoot = "/zk_config_games"
+
+	ZookeeperKeyHallRoot = "/zk_config_halls"
 )
 
 const (
