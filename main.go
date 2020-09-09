@@ -2,14 +2,12 @@ package main
 
 import (
 	"demo/zookper_demo/game"
-	"demo/zookper_demo/global"
+	"demo/zookper_demo/gate"
 	"demo/zookper_demo/hall"
 	"demo/zookper_demo/kfka"
 	"demo/zookper_demo/login"
 	"demo/zookper_demo/master"
-	"fmt"
 	"github.com/judwhite/go-svc/svc"
-	"github.com/samuel/go-zookeeper/zk"
 	"log"
 	"os"
 	"time"
@@ -24,165 +22,7 @@ type Program struct {
 	hall_service   *hall.Service
 	login_service  *login.Service
 	game_service   *game.Service
-}
-
-func zkStateString(s *zk.Stat) string {
-	return fmt.Sprintf("Czxid:%d, Mzxid: %d, Ctime: %d, Mtime: %d, Version: %d, Cversion: %d, Aversion: %d, EphemeralOwner: %d, DataLength: %d, NumChildren: %d, Pzxid: %d",
-		s.Czxid, s.Mzxid, s.Ctime, s.Mtime, s.Version, s.Cversion, s.Aversion, s.EphemeralOwner, s.DataLength, s.NumChildren, s.Pzxid)
-}
-
-func zkStateStringFormat(s *zk.Stat) string {
-	return fmt.Sprintf("Czxid:%d\nMzxid: %d\nCtime: %d\nMtime: %d\nVersion: %d\nCversion: %d\nAversion: %d\nEphemeralOwner: %d\nDataLength: %d\nNumChildren: %d\nPzxid: %d\n",
-		s.Czxid, s.Mzxid, s.Ctime, s.Mtime, s.Version, s.Cversion, s.Aversion, s.EphemeralOwner, s.DataLength, s.NumChildren, s.Pzxid)
-}
-
-func watchEventCb(event zk.Event) {
-	log.Println(">>>>>>>>>>>>>>>>>>>>>>")
-	log.Println("path:", event.Path)
-	log.Println("type:", event.Type)
-	log.Println("state:", event.State)
-	log.Println("<<<<<<<<<<<<<<<<<<<<<<")
-
-	if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
-		go func() {
-			data, err := global.ZKPServe.Read(event.Path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			log.Println(string(data))
-		}()
-
-		go func() {
-			_, err := global.ZKPServe.Watch(event.Path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}()
-	}
-}
-
-func zkWatch() {
-	option := zk.WithEventCallback(watchEventCb)
-	var hosts = []string{"192.168.0.115:2181"}
-	conn, _, err := zk.Connect(hosts, time.Second*60, option)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer conn.Close()
-
-	var path1 = "/zk_test_go1"
-	var data1 = []byte("zk_test_go1_data1")
-	exist, s, _, err := conn.ExistsW(path1)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("path[%s] exist[%t]\n", path1, exist)
-	fmt.Printf("state:\n")
-	fmt.Printf("%s\n", zkStateStringFormat(s))
-
-	// try create
-	var acls = zk.WorldACL(zk.PermAll)
-	p, err_create := conn.Create(path1, data1, zk.FlagEphemeral, acls)
-	if err_create != nil {
-		fmt.Println(err_create)
-		return
-	}
-	fmt.Printf("created path[%s]\n", p)
-
-	time.Sleep(time.Second * 2)
-
-	exist, s, _, err = conn.ExistsW(path1)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Printf("path[%s] exist[%t] after create\n", path1, exist)
-	fmt.Printf("state:\n")
-	fmt.Printf("%s\n", zkStateStringFormat(s))
-	// delete
-	err = conn.Delete(path1, s.Version)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	exist, s, _, err = conn.ExistsW(path1)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("path[%s] exist[%t] after delete\n", path1, exist)
-	fmt.Printf("state:\n")
-	fmt.Printf("%s\n", zkStateStringFormat(s))
-}
-
-func zkTest() {
-	var hosts = []string{"192.168.0.115:2181"}
-	// var provider = zk.DNSHostProvider{}
-	// err := provider.Init(hosts)
-	// if err != nil {
-	// 	log.Panic(err)
-	// }
-	// servername,retryStart := provider.Next()
-
-	conn, event, err := zk.Connect(hosts, time.Second*60)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer conn.Close()
-	log.Println(event)
-
-	// create
-	var path = "/zk_test"
-	exist, s, err := conn.Exists(path)
-	if err != nil {
-		log.Panic(err)
-	}
-	if exist {
-		log.Printf("path:%s,exists:%t", path, exist)
-	} else {
-		// var flags = []int32{zk.PermCreate,zk.PermRead,zk.PermWrite}
-		var flags int32 = 0
-		var acls = zk.WorldACL(zk.PermAll)
-		var data = []byte("hello")
-		p, errCreate := conn.Create(path, data, flags, acls)
-		if errCreate != nil {
-			log.Panic(errCreate)
-		}
-		log.Println("created:", p)
-	}
-
-	// get
-	v, s, err := conn.Get(path)
-	if err != nil {
-		log.Panic(err)
-	}
-	log.Println(v)
-	log.Println("state:")
-	log.Println(zkStateStringFormat(s))
-
-	exist, s, err = conn.Exists(path)
-	if err != nil {
-		log.Panic(err)
-	}
-	log.Printf("path:%s,exists:%t", path, exist)
-
-	// update
-	var new_data = []byte(`{"a":10,"b":123131231,"c":"123231232131313"}`)
-	s, err = conn.Set(path, new_data, s.Version)
-	if err != nil {
-		log.Panic(err)
-	}
-	// get
-	v, s, err = conn.Get(path)
-	if err != nil {
-		log.Panic(err)
-		return
-	}
+	gate_service   *gate.Service
 }
 
 func (p *Program) Init(env svc.Environment) error {
@@ -192,17 +32,11 @@ func (p *Program) Init(env svc.Environment) error {
 
 	}
 
-	err := global.ZKPServe.ConnectWithWatcher(global.ZKHosts, time.Second*60, watchEventCb)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
 	p.master_service = master.New()
 	p.hall_service = hall.New()
 	p.login_service = login.New()
 	p.game_service = game.New()
-
+	p.gate_service = gate.New()
 	return nil
 }
 
@@ -233,6 +67,12 @@ func (p *Program) Start() error {
 		return err
 	}
 
+	err = p.gate_service.Start()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	err = kfka.Conn()
 	if err != nil {
 		log.Println(err)
@@ -248,6 +88,7 @@ func (p *Program) Stop() error {
 	p.hall_service.Stop()
 	p.login_service.Stop()
 	p.game_service.Stop()
+	p.gate_service.Stop()
 	time.Sleep(time.Millisecond * 20)
 	return nil
 }

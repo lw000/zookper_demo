@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	center *zkserve.Zkp
+	center *zkserve.ZkCenter
 )
 
 type Service struct {

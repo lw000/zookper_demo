@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-type Zkp struct {
+type ZkCenter struct {
 	conn *zk.Conn
 }
 
-func New() *Zkp {
-	return &Zkp{}
+func New() *ZkCenter {
+	return &ZkCenter{}
 }
 
 func zkStateString(s *zk.Stat) string {
@@ -25,34 +25,34 @@ func zkStateStringFormat(s *zk.Stat) string {
 		s.Czxid, s.Mzxid, s.Ctime, s.Mtime, s.Version, s.Cversion, s.Aversion, s.EphemeralOwner, s.DataLength, s.NumChildren, s.Pzxid)
 }
 
-func (zkp *Zkp) Connect(hosts []string, sessionTimeout time.Duration) error {
+func (zkc *ZkCenter) Connect(hosts []string, sessionTimeout time.Duration) error {
 	var err error
-	zkp.conn, _, err = zk.Connect(hosts, sessionTimeout)
+	zkc.conn, _, err = zk.Connect(hosts, sessionTimeout)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (zkp *Zkp) ConnectWithWatcher(hosts []string, sessionTimeout time.Duration, watchEventCb func(event zk.Event)) error {
+func (zkc *ZkCenter) ConnectWithWatcher(hosts []string, sessionTimeout time.Duration, watchEventCb func(event zk.Event)) error {
 	if watchEventCb == nil {
 		panic("watchEventCb is nil")
 	}
 	var err error
 	option := zk.WithEventCallback(watchEventCb)
-	zkp.conn, _, err = zk.Connect(hosts, sessionTimeout, option)
+	zkc.conn, _, err = zk.Connect(hosts, sessionTimeout, option)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (zkp *Zkp) ZkClose() {
-	zkp.conn.Close()
+func (zkc *ZkCenter) ZkClose() {
+	zkc.conn.Close()
 }
 
-func (zkp *Zkp) Create(nodePath string, flags int32, perm int32) error {
-	exist, _ := zkp.Exists(nodePath)
+func (zkc *ZkCenter) Create(nodePath string, flags int32, perm int32) error {
+	exist, _ := zkc.Exists(nodePath)
 	if !exist {
 		// flags有4种取值：
 		// 0:永久，除非手动删除
@@ -61,7 +61,7 @@ func (zkp *Zkp) Create(nodePath string, flags int32, perm int32) error {
 		// 3:Ephemeral和Sequence，即，短暂且自动添加序号
 		// var flags int32 = 0 // zk.FlagEphemeral | zk.FlagSequence
 		var acl = zk.WorldACL(perm) // 表示该节点没有权限限制
-		p, err := zkp.conn.Create(nodePath, nil, flags, acl)
+		p, err := zkc.conn.Create(nodePath, nil, flags, acl)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -71,8 +71,8 @@ func (zkp *Zkp) Create(nodePath string, flags int32, perm int32) error {
 	return nil
 }
 
-func (zkp *Zkp) Exists(nodePath string) (bool, *zk.Stat) {
-	exist, state, err := zkp.conn.Exists(nodePath)
+func (zkc *ZkCenter) Exists(nodePath string) (bool, *zk.Stat) {
+	exist, state, err := zkc.conn.Exists(nodePath)
 	if err != nil {
 		log.Println(err)
 		return false, nil
@@ -81,8 +81,8 @@ func (zkp *Zkp) Exists(nodePath string) (bool, *zk.Stat) {
 }
 
 // read zookeeper data
-func (zkp *Zkp) Read(nodePath string) ([]byte, error) {
-	data, s, err := zkp.conn.Get(nodePath)
+func (zkc *ZkCenter) Read(nodePath string) ([]byte, error) {
+	data, s, err := zkc.conn.Get(nodePath)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -94,17 +94,17 @@ func (zkp *Zkp) Read(nodePath string) ([]byte, error) {
 }
 
 // write zookeeper data
-func (zkp *Zkp) Write(nodePath string, data []byte) error {
-	exist, s := zkp.Exists(nodePath)
+func (zkc *ZkCenter) Write(nodePath string, data []byte) error {
+	exist, s := zkc.Exists(nodePath)
 	var err error
 	if exist {
-		_, err = zkp.conn.Set(nodePath, data, s.Version)
+		_, err = zkc.conn.Set(nodePath, data, s.Version)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 	} else {
-		_, err = zkp.conn.Set(nodePath, data, 0)
+		_, err = zkc.conn.Set(nodePath, data, 0)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -113,13 +113,13 @@ func (zkp *Zkp) Write(nodePath string, data []byte) error {
 	return nil
 }
 
-func (zkp *Zkp) Delete(nodePath string) error {
-	exist, s, err := zkp.conn.Exists(nodePath)
+func (zkc *ZkCenter) Delete(nodePath string) error {
+	exist, s, err := zkc.conn.Exists(nodePath)
 	if err != nil {
 		log.Println(err)
 	}
 	if exist {
-		err = zkp.conn.Delete(nodePath, s.Version)
+		err = zkc.conn.Delete(nodePath, s.Version)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -128,8 +128,8 @@ func (zkp *Zkp) Delete(nodePath string) error {
 	return nil
 }
 
-func (zkp *Zkp) Watch(nodePath string) (<-chan zk.Event, error) {
-	exist, _, ev, err := zkp.conn.ExistsW(nodePath)
+func (zkc *ZkCenter) Watch(nodePath string) (<-chan zk.Event, error) {
+	exist, _, ev, err := zkc.conn.ExistsW(nodePath)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -140,8 +140,8 @@ func (zkp *Zkp) Watch(nodePath string) (<-chan zk.Event, error) {
 	return ev, nil
 }
 
-func (zkp *Zkp) Children(nodePath string) ([]string, error) {
-	s, _, err := zkp.conn.Children(nodePath)
+func (zkc *ZkCenter) Children(nodePath string) ([]string, error) {
+	s, _, err := zkc.conn.Children(nodePath)
 	if err != nil {
 		return nil, err
 	}
