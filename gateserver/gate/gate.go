@@ -1,4 +1,4 @@
-package login
+package gate
 
 import (
 	"demo/zookper_demo/consts"
@@ -9,49 +9,41 @@ import (
 	"time"
 )
 
-type Service struct {
+var (
 	center *zkserve.ZkCenter
-	quit   chan int
+)
+
+type Service struct {
+	quit chan int
 }
 
 func init() {
-
+	center = zkserve.New()
 }
 
 func New() *Service {
 	return &Service{
-		center: zkserve.New(),
-		quit:   make(chan int, 1),
+		quit: make(chan int, 1),
 	}
 }
 
-func (s *Service) init() error {
-	err := s.center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	return nil
-}
-
-func (s *Service) watchEventCb(event zk.Event) {
-	// log.Println("login >>>>>>>>>>>>>>>>>>>>>>")
-	// log.Println("login path:", event.Path)
-	// log.Println("login type:", event.Type)
-	// log.Println("login state:", event.State)
-	// log.Println("login <<<<<<<<<<<<<<<<<<<<<<")
+func watchEventCb(event zk.Event) {
+	// log.Println("game >>>>>>>>>>>>>>>>>>>>>>")
+	// log.Println("game path:", event.Path)
+	// log.Println("game type:", event.Type)
+	// log.Println("game state:", event.State)
+	// log.Println("game <<<<<<<<<<<<<<<<<<<<<<")
 
 	if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
 		go func() {
-			data, err := s.center.Read(event.Path)
+			data, err := center.Read(event.Path)
 			if err != nil {
 				log.Println(err)
 				return
 			}
-			log.Println("login:", string(data))
+			log.Println("gateserver:", string(data))
 
-			_, err = s.center.Watch(event.Path)
+			_, err = center.Watch(event.Path)
 			if err != nil {
 				log.Println(err)
 				return
@@ -66,19 +58,19 @@ func (s *Service) Register(servername string) error {
 }
 
 func (s *Service) Start() error {
-	var err error
-	err = s.init()
-	if err != nil {
-		return err
-	}
-
-	_, err = s.center.Watch(consts.ZookeeperKeyLogin)
+	err := center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, watchEventCb)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = s.center.Create(consts.ZookeeperKeyLogin, 0, zk.PermRead)
+	_, err = center.Watch(consts.ZookeeperKeyGate)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = center.Create(consts.ZookeeperKeyGate, 0, zk.PermRead)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -89,7 +81,7 @@ func (s *Service) Start() error {
 			if x := recover(); x != nil {
 				log.Println(x)
 			}
-			log.Println("login service exit")
+			log.Println("gate server service exit")
 		}()
 
 		for {
@@ -105,5 +97,4 @@ func (s *Service) Start() error {
 
 func (s *Service) Stop() {
 	close(s.quit)
-	s.center.Close()
 }

@@ -18,6 +18,8 @@ const (
 	ZookeeperKeyGameRoot = "/zk_config_games"
 
 	ZookeeperKeyHallRoot = "/zk_config_halls"
+
+	ZookeeperKeyLoginRoot = "/zk_config_logins"
 )
 
 const (

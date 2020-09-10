@@ -15,6 +15,7 @@ import (
 type Service struct {
 	center *zkserve.ZkCenter
 	quit   chan int
+	count  int32
 }
 
 func init() {
@@ -28,8 +29,33 @@ func New() *Service {
 	}
 }
 
+func (s *Service) watchEventCb(event zk.Event) {
+	log.Println("masterserver >>>>>>>>>>>>>>>>>>>>>>")
+	log.Println("masterserver path:", event.Path)
+	log.Println("masterserver type:", event.Type)
+	log.Println("masterserver state:", event.State)
+	log.Println("masterserver <<<<<<<<<<<<<<<<<<<<<<")
+
+	// if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
+	// 	go func() {
+	// 		data, err := s.center.Read(event.Path)
+	// 		if err != nil {
+	// 			log.Println(err)
+	// 			return
+	// 		}
+	// 		log.Println("game:", string(data))
+	//
+	// 		_, err = s.center.Watch(event.Path)
+	// 		if err != nil {
+	// 			log.Println(err)
+	// 			return
+	// 		}
+	// 	}()
+	// }
+}
+
 func (s *Service) init() error {
-	err := s.center.Connect(global.ZookeeperHosts, time.Second*60)
+	err := s.center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -39,6 +65,24 @@ func (s *Service) init() error {
 
 func (s *Service) Start() error {
 	err := s.init()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = s.center.Watch(consts.ZookeeperKeyHallRoot)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = s.center.Watch(consts.ZookeeperKeyGameRoot)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = s.center.Watch(consts.ZookeeperKeyLoginRoot)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -64,9 +108,17 @@ func (s *Service) Start() error {
 
 	go s.Run()
 
-	go s.pushGameConfig()
-	go s.pushHallConfig()
-	go s.pushLoginConfig()
+	go s.modifyGameConfig()
+	go s.modifyHallConfig()
+	go s.modifyLoginConfig()
+
+	// for i := 0; i < 100; i++ {
+	// 	go func(i int) {
+	// 		// s.count += 1
+	// 		atomic.AddInt32(&s.count, 1)
+	// 		log.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>:", s.count)
+	// 	}(i)
+	// }
 
 	return nil
 }
@@ -77,7 +129,7 @@ func (s *Service) Run() {
 			log.Println(x)
 		}
 
-		log.Println("master service exit")
+		log.Println("masters erver service exit")
 	}()
 
 	// gin.SetMode(gin.ReleaseMode)
@@ -92,17 +144,17 @@ func (s *Service) Run() {
 	}
 }
 
-func (s *Service) pushHallConfig() {
+func (s *Service) modifyHallConfig() {
 	defer func() {
 		if x := recover(); x != nil {
 			log.Println(x)
 		}
 
-		log.Println("master pushHallConfig quit")
+		log.Println("master server modifyHallConfig quit")
 	}()
 
 	ticker := time.NewTicker(time.Second)
-	ticker.Stop()
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -126,13 +178,13 @@ func (s *Service) pushHallConfig() {
 	}
 }
 
-func (s *Service) pushGameConfig() {
+func (s *Service) modifyGameConfig() {
 	defer func() {
 		if x := recover(); x != nil {
 			log.Println(x)
 		}
 
-		log.Println("master pushGameConfig quit")
+		log.Println("master server modifyGameConfig quit")
 	}()
 
 	ticker := time.NewTicker(time.Second * 2)
@@ -161,13 +213,13 @@ func (s *Service) pushGameConfig() {
 	}
 }
 
-func (s *Service) pushLoginConfig() {
+func (s *Service) modifyLoginConfig() {
 	defer func() {
 		if x := recover(); x != nil {
 			log.Println(x)
 		}
 
-		log.Println("master pushLoginConfig quit")
+		log.Println("master server modifyLoginConfig quit")
 	}()
 
 	ticker := time.NewTicker(time.Second * 3)
