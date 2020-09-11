@@ -106,48 +106,47 @@ func (s *Service) Start() error {
 
 	err = s.register(strconv.Itoa(int(s.svrId)))
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
 	_, err = s.client.Watch(consts.GameConfig)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
 	err = s.client.Create(consts.GameConfig, []byte(""), 0, zk.PermRead)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
-	go func() {
-		defer func() {
-			if x := recover(); x != nil {
-				log.Println(x)
-			}
-			log.Printf("game server [%d] exit\n", s.svrId)
-		}()
-
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				// go func() {
-				// 	d, err := s.client.Children(consts.GameServerRoot)
-				// 	if err == nil {
-				// 		log.Println(d)
-				// 	}
-				// }()
-			case <-s.quit:
-				return
-			}
-		}
-	}()
+	go s.run()
 
 	return nil
+}
+
+func (s *Service) run() {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Println(x)
+		}
+		log.Printf("game server [%d] exit\n", s.svrId)
+	}()
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			// go func() {
+			// 	d, err := s.client.Children(consts.GameServerRoot)
+			// 	if err == nil {
+			// 		log.Println(d)
+			// 	}
+			// }()
+		case <-s.quit:
+			return
+		}
+	}
 }
 
 func (s *Service) Stop() {

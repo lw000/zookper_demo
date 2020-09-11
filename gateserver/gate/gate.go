@@ -104,39 +104,38 @@ func (s *Service) Start() error {
 
 	err = s.register(strconv.Itoa(int(s.svrId)))
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
 	_, err = s.client.Watch(consts.GateConfig)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
 	err = s.client.Create(consts.GateConfig, []byte(""), 0, zk.PermRead)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
-	go func() {
-		defer func() {
-			if x := recover(); x != nil {
-				log.Println(x)
-			}
-			log.Printf("gate server [%d] exit\n", s.svrId)
-		}()
-
-		for {
-			select {
-			case <-s.quit:
-				return
-			}
-		}
-	}()
+	go s.run()
 
 	return nil
+}
+
+func (s *Service) run() {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Println(x)
+		}
+		log.Printf("gate server [%d] exit\n", s.svrId)
+	}()
+
+	for {
+		select {
+		case <-s.quit:
+			return
+		}
+	}
 }
 
 func (s *Service) Stop() {
