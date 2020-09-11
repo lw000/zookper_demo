@@ -14,7 +14,6 @@ type ZkClient struct {
 type ServiceNode struct {
 	Services []string
 	Root     string
-	z        *ZkClient
 }
 
 func New() *ZkClient {

@@ -107,7 +107,7 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	err = s.register(fmt.Sprintf("%s_%s", "login", strconv.Itoa(int(s.svrId))))
+	err = s.register(strconv.Itoa(int(s.svrId)))
 	if err != nil {
 		log.Println(err)
 		return err

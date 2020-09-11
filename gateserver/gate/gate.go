@@ -102,11 +102,12 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	err = s.register(fmt.Sprintf("%s_%s", "gate", strconv.Itoa(int(s.svrId))))
+	err = s.register(strconv.Itoa(int(s.svrId)))
 	if err != nil {
 		log.Println(err)
 		return err
 	}
+
 	_, err = s.client.Watch(consts.GateConfig)
 	if err != nil {
 		log.Println(err)

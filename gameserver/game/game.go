@@ -22,6 +22,7 @@ type Service struct {
 	svrId            int32
 	client           *zkserve.ZkClient
 	quit             chan int
+	node             zkserve.ServiceNode
 }
 
 func init() {
@@ -103,7 +104,7 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	err = s.register(fmt.Sprintf("%s_%s", "game", strconv.Itoa(int(s.svrId))))
+	err = s.register(strconv.Itoa(int(s.svrId)))
 	if err != nil {
 		log.Println(err)
 		return err
