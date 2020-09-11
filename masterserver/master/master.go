@@ -13,7 +13,7 @@ import (
 )
 
 type Service struct {
-	center *zkserve.ZkCenter
+	center *zkserve.ZkClient
 	quit   chan int
 	count  int32
 }
@@ -30,28 +30,13 @@ func New() *Service {
 }
 
 func (s *Service) watchEventCb(event zk.Event) {
-	log.Println("masterserver >>>>>>>>>>>>>>>>>>>>>>")
-	log.Println("masterserver path:", event.Path)
-	log.Println("masterserver type:", event.Type)
-	log.Println("masterserver state:", event.State)
-	log.Println("masterserver <<<<<<<<<<<<<<<<<<<<<<")
-
-	// if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
-	// 	go func() {
-	// 		data, err := s.center.Read(event.Path)
-	// 		if err != nil {
-	// 			log.Println(err)
-	// 			return
-	// 		}
-	// 		log.Println("game:", string(data))
-	//
-	// 		_, err = s.center.Watch(event.Path)
-	// 		if err != nil {
-	// 			log.Println(err)
-	// 			return
-	// 		}
-	// 	}()
-	// }
+	if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
+		log.Println("master server >>>>>>>>>>>>>>>>>>>>>>")
+		log.Println("master server path:", event.Path)
+		log.Println("master server type:", event.Type)
+		log.Println("master server state:", event.State)
+		log.Println("master server <<<<<<<<<<<<<<<<<<<<<<")
+	}
 }
 
 func (s *Service) init() error {
@@ -106,11 +91,18 @@ func (s *Service) Start() error {
 		return err
 	}
 
+	err = s.center.Create(consts.ZookeeperKeyGate, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	go s.Run()
 
 	go s.modifyGameConfig()
 	go s.modifyHallConfig()
 	go s.modifyLoginConfig()
+	go s.modifyGateConfig()
 
 	// for i := 0; i < 100; i++ {
 	// 	go func(i int) {
@@ -129,7 +121,7 @@ func (s *Service) Run() {
 			log.Println(x)
 		}
 
-		log.Println("masters erver service exit")
+		log.Printf("master server exit\n")
 	}()
 
 	// gin.SetMode(gin.ReleaseMode)
@@ -247,7 +239,41 @@ func (s *Service) modifyLoginConfig() {
 	}
 }
 
+func (s *Service) modifyGateConfig() {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Println(x)
+		}
+
+		log.Println("master server modifyGateConfig quit")
+	}()
+
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			m := make(map[string]interface{})
+			m["a"] = "10"
+			m["b"] = 10
+			m["c"] = 20.20
+			m["d"] = true
+			m["e"] = time.Now().Format("2006-01-02 15:04:05.000000")
+			m["node"] = consts.ZookeeperKeyGate
+			data, err := json.Marshal(m)
+			if err == nil {
+				err = s.center.Write(consts.ZookeeperKeyGate, data)
+				if err != nil {
+					log.Println(err)
+				}
+			}
+		case <-s.quit:
+			return
+		}
+	}
+}
+
 func (s *Service) Stop() {
-	close(s.quit)
 	s.center.Close()
+	close(s.quit)
 }

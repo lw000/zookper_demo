@@ -4,46 +4,63 @@ import (
 	"demo/zookper_demo/consts"
 	"demo/zookper_demo/global"
 	"demo/zookper_demo/zkserve"
+	"encoding/json"
+	"fmt"
 	"github.com/samuel/go-zookeeper/zk"
 	"log"
+	"strconv"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	center *zkserve.ZkCenter
+	gateSvrId int32 = 0
 )
 
 type Service struct {
-	quit chan int
+	registerNodeName string
+	svrId            int32
+	client           *zkserve.ZkClient
+	quit             chan int
 }
 
 func init() {
-	center = zkserve.New()
 }
 
 func New() *Service {
 	return &Service{
-		quit: make(chan int, 1),
+		svrId:  atomic.AddInt32(&gateSvrId, 1),
+		client: zkserve.New(),
+		quit:   make(chan int, 1),
 	}
 }
 
-func watchEventCb(event zk.Event) {
-	// log.Println("game >>>>>>>>>>>>>>>>>>>>>>")
-	// log.Println("game path:", event.Path)
-	// log.Println("game type:", event.Type)
-	// log.Println("game state:", event.State)
-	// log.Println("game <<<<<<<<<<<<<<<<<<<<<<")
+func (s *Service) init() error {
+	err := s.client.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (s *Service) watchEventCb(event zk.Event) {
+	// log.Println("gate server >>>>>>>>>>>>>>>>>>>>>>")
+	// log.Println("gate server path:", event.Path)
+	// log.Println("gate server type:", event.Type)
+	// log.Println("gate server state:", event.State)
+	// log.Println("gate server <<<<<<<<<<<<<<<<<<<<<<")
 
 	if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
 		go func() {
-			data, err := center.Read(event.Path)
+			data, err := s.client.Read(event.Path)
 			if err != nil {
 				log.Println(err)
 				return
 			}
-			log.Println("gateserver:", string(data))
+			log.Printf("gate server id %d, data:%s\n", s.svrId, string(data))
 
-			_, err = center.Watch(event.Path)
+			_, err = s.client.Watch(event.Path)
 			if err != nil {
 				log.Println(err)
 				return
@@ -52,25 +69,57 @@ func watchEventCb(event zk.Event) {
 	}
 }
 
-func (s *Service) Register(servername string) error {
+func (s *Service) register(node string) error {
+	err := s.client.Create(consts.ZookeeperKeyGateRoot, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 
+	s.registerNodeName = fmt.Sprintf("%s/%s", consts.ZookeeperKeyGateRoot, node)
+	err = s.client.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	m := make(map[string]interface{})
+	m["svrId"] = s.svrId
+	m["register_time"] = time.Now().Format("2006-01-02 15:04:05")
+	var data []byte
+	data, err = json.Marshal(m)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Write(s.registerNodeName, data)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
 	return nil
 }
 
 func (s *Service) Start() error {
-	err := center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, watchEventCb)
+	var err error
+	err = s.init()
+	if err != nil {
+		return err
+	}
+
+	err = s.register(fmt.Sprintf("%s_%s", "gate", strconv.Itoa(int(s.svrId))))
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	_, err = s.client.Watch(consts.ZookeeperKeyGate)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	_, err = center.Watch(consts.ZookeeperKeyGate)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = center.Create(consts.ZookeeperKeyGate, 0, zk.PermRead)
+	err = s.client.Create(consts.ZookeeperKeyGate, 0, zk.PermRead)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -81,7 +130,7 @@ func (s *Service) Start() error {
 			if x := recover(); x != nil {
 				log.Println(x)
 			}
-			log.Println("gate server service exit")
+			log.Printf("gate server [%d] exit\n", s.svrId)
 		}()
 
 		for {
@@ -96,5 +145,6 @@ func (s *Service) Start() error {
 }
 
 func (s *Service) Stop() {
+	s.client.Close()
 	close(s.quit)
 }

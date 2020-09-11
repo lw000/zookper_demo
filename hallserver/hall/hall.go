@@ -21,8 +21,9 @@ var (
 type Service struct {
 	registerNodeName string
 	svrId            int32
-	center           *zkserve.ZkCenter
+	client           *zkserve.ZkClient
 	quit             chan int
+	rootName         string
 }
 
 func init() {
@@ -32,13 +33,13 @@ func init() {
 func New() *Service {
 	return &Service{
 		svrId:  atomic.AddInt32(&hallSvrId, 1),
-		center: zkserve.New(),
+		client: zkserve.New(),
 		quit:   make(chan int, 1),
 	}
 }
 
 func (s *Service) init() error {
-	err := s.center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
+	err := s.client.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -48,39 +49,67 @@ func (s *Service) init() error {
 }
 
 func (s *Service) watchEventCb(event zk.Event) {
-	// log.Println("hallserver >>>>>>>>>>>>>>>>>>>>>>")
-	// log.Println("hallserver path:", event.Path)
-	// log.Println("hallserver type:", event.Type)
-	// log.Println("hallserver state:", event.State)
-	// log.Println("hallserver <<<<<<<<<<<<<<<<<<<<<<")
+	// log.Println("hall server >>>>>>>>>>>>>>>>>>>>>>")
+	// log.Println("hall server path:", event.Path)
+	// log.Println("hall server type:", event.Type)
+	// log.Println("hall server state:", event.State)
+	// log.Println("hall server <<<<<<<<<<<<<<<<<<<<<<")
 
-	if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
-		go func() {
-			data, err := s.center.Read(event.Path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			log.Println("hallserver:", string(data))
+	switch event.Path {
+	case consts.ZookeeperKeyGameRoot:
+		if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
+			go func() {
+				d, err := s.client.Children(consts.ZookeeperKeyGameRoot)
+				if err == nil {
+					log.Println(d)
+				}
+			}()
+		}
+	case consts.ZookeeperKeyHall:
+		if event.Type == zk.EventNodeDataChanged {
+			go func() {
+				data, err := s.client.Read(event.Path)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				log.Printf("hall server id %d, data:%s\n", s.svrId, string(data))
 
-			_, err = s.center.Watch(event.Path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}()
+				_, err = s.client.Watch(event.Path)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+			}()
+		}
 	}
+	// if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
+	// 	go func() {
+	// 		data, err := s.client.Read(event.Path)
+	// 		if err != nil {
+	// 			log.Println(err)
+	// 			return
+	// 		}
+	// 		log.Println("hall server:", string(data))
+	//
+	// 		_, err = s.client.Watch(event.Path)
+	// 		if err != nil {
+	// 			log.Println(err)
+	// 			return
+	// 		}
+	// 	}()
+	// }
 }
 
-func (s *Service) register(servername string) error {
-	err := s.center.Create(consts.ZookeeperKeyHallRoot, 0, zk.PermAll)
+func (s *Service) register(node string) error {
+	err := s.client.Create(consts.ZookeeperKeyHallRoot, 0, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	s.registerNodeName = fmt.Sprintf("%s/hall_%s", consts.ZookeeperKeyHallRoot /*servername*/, strconv.Itoa(int(s.svrId)))
-	err = s.center.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
+	s.registerNodeName = fmt.Sprintf("%s/%s", consts.ZookeeperKeyHallRoot, node)
+	err = s.client.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -95,7 +124,7 @@ func (s *Service) register(servername string) error {
 		log.Println(err)
 		return err
 	}
-	err = s.center.Write(s.registerNodeName, data)
+	err = s.client.Write(s.registerNodeName, data)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -110,19 +139,31 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	err = s.register("")
+	err = s.register(fmt.Sprintf("%s_%s", "hall", strconv.Itoa(int(s.svrId))))
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	_, err = s.center.Watch(consts.ZookeeperKeyHall)
+	_, err = s.client.Watch(consts.ZookeeperKeyHall)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = s.center.Create(consts.ZookeeperKeyHall, 0, zk.PermRead)
+	err = s.client.Create(consts.ZookeeperKeyHall, 0, zk.PermRead)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = s.client.Watch(consts.ZookeeperKeyGame)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyGame, 0, zk.PermRead)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -139,7 +180,7 @@ func (s *Service) Run() {
 			log.Println(x)
 		}
 
-		log.Println("hall server service exit")
+		log.Printf("hall server [%d] exit\n", s.svrId)
 	}()
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -147,7 +188,7 @@ func (s *Service) Run() {
 		select {
 		case <-ticker.C:
 			// go func() {
-			// 	d, err := s.center.Children(consts.ZookeeperKeyHallRoot)
+			// 	d, err := s.client.Children(consts.ZookeeperKeyHallRoot)
 			// 	if err == nil {
 			// 		log.Println(d)
 			// 	}
@@ -160,5 +201,5 @@ func (s *Service) Run() {
 
 func (s *Service) Stop() {
 	close(s.quit)
-	s.center.Close()
+	s.client.Close()
 }
