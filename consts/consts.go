@@ -1,29 +1,25 @@
 package consts
 
 const (
-	ZookeeperKey = "/zk_test"
+	Root = "/levi"
 
-	ZookeeperKeyRoot = "/zk"
+	RootConfig = Root + "/config"
 
-	ZookeeperKeyMaster = ZookeeperKeyRoot + "/master_server"
+	MasterConfig = RootConfig + "/master"
 
-	ZookeeperKeyHall = ZookeeperKeyRoot + "/hall_server"
+	HallConfig = RootConfig + "/hall"
 
-	ZookeeperKeyGame = ZookeeperKeyRoot + "/game_server"
+	GameConfig = RootConfig + "/game"
 
-	ZookeeperKeyLogin = ZookeeperKeyRoot + "/login_server"
+	LoginConfig = RootConfig + "/login"
 
-	ZookeeperKeyGate = ZookeeperKeyRoot + "/gate_server"
+	GateConfig = RootConfig + "/gate"
 
-	ZookeeperKeyGameRoot = ZookeeperKeyRoot + "/game"
+	GameServerRoot = Root + "/game-server"
 
-	ZookeeperKeyHallRoot = ZookeeperKeyRoot + "/hall"
+	HallServerRoot = Root + "/hall-server"
 
-	ZookeeperKeyLoginRoot = ZookeeperKeyRoot + "/login"
+	LoginServerRoot = Root + "/login-server"
 
-	ZookeeperKeyGateRoot = ZookeeperKeyRoot + "/gate"
-)
-
-const (
-	ZooLock = "/lock-node/guid-lock-"
+	GateServerRoot = Root + "/gate-server"
 )

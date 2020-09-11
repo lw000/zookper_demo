@@ -73,19 +73,11 @@ func (s *Service) watchEventCb(event zk.Event) {
 
 func (s *Service) register(node string) error {
 	var err error
-	err = s.client.Create(consts.ZookeeperKeyGameRoot, 0, zk.PermAll)
+	err = s.client.Create(consts.GameServerRoot, []byte(""), 0, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-
-	s.registerNodeName = fmt.Sprintf("%s/%s", consts.ZookeeperKeyGameRoot, node)
-	err = s.client.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
 	m := make(map[string]interface{})
 	m["svrId"] = s.svrId
 	m["register_time"] = time.Now().Format("2006-01-02 15:04:05")
@@ -95,12 +87,12 @@ func (s *Service) register(node string) error {
 		log.Println(err)
 		return err
 	}
-	err = s.client.Write(s.registerNodeName, data)
+	s.registerNodeName = fmt.Sprintf("%s/%s", consts.GameServerRoot, node)
+	err = s.client.Create(s.registerNodeName, data, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-
 	return nil
 }
 
@@ -117,13 +109,13 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	_, err = s.client.Watch(consts.ZookeeperKeyGame)
+	_, err = s.client.Watch(consts.GameConfig)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = s.client.Create(consts.ZookeeperKeyGame, 0, zk.PermRead)
+	err = s.client.Create(consts.GameConfig, []byte(""), 0, zk.PermRead)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -143,7 +135,7 @@ func (s *Service) Start() error {
 			select {
 			case <-ticker.C:
 				// go func() {
-				// 	d, err := s.client.Children(consts.ZookeeperKeyGameRoot)
+				// 	d, err := s.client.Children(consts.GameServerRoot)
 				// 	if err == nil {
 				// 		log.Println(d)
 				// 	}

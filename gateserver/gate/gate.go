@@ -70,19 +70,11 @@ func (s *Service) watchEventCb(event zk.Event) {
 }
 
 func (s *Service) register(node string) error {
-	err := s.client.Create(consts.ZookeeperKeyGateRoot, 0, zk.PermAll)
+	err := s.client.Create(consts.GateServerRoot, []byte(""), 0, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-
-	s.registerNodeName = fmt.Sprintf("%s/%s", consts.ZookeeperKeyGateRoot, node)
-	err = s.client.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
 	m := make(map[string]interface{})
 	m["svrId"] = s.svrId
 	m["register_time"] = time.Now().Format("2006-01-02 15:04:05")
@@ -93,11 +85,13 @@ func (s *Service) register(node string) error {
 		return err
 	}
 
-	err = s.client.Write(s.registerNodeName, data)
+	s.registerNodeName = fmt.Sprintf("%s/%s", consts.GateServerRoot, node)
+	err = s.client.Create(s.registerNodeName, data, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
+
 	return nil
 }
 
@@ -113,13 +107,13 @@ func (s *Service) Start() error {
 		log.Println(err)
 		return err
 	}
-	_, err = s.client.Watch(consts.ZookeeperKeyGate)
+	_, err = s.client.Watch(consts.GateConfig)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = s.client.Create(consts.ZookeeperKeyGate, 0, zk.PermRead)
+	err = s.client.Create(consts.GateConfig, []byte(""), 0, zk.PermRead)
 	if err != nil {
 		log.Println(err)
 		return err

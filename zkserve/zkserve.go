@@ -47,7 +47,7 @@ func (z *ZkClient) Close() {
 	z.conn.Close()
 }
 
-func (z *ZkClient) Create(path string, flags int32, perm int32) error {
+func (z *ZkClient) Create(path string, data []byte, flags int32, perm int32) error {
 	exist, _ := z.Exists(path)
 	if !exist {
 		// flags有4种取值：
@@ -57,7 +57,7 @@ func (z *ZkClient) Create(path string, flags int32, perm int32) error {
 		// zk.Ephemeral | zk.Sequence = 3，即，短暂且自动添加序号
 		// var flags int32 = 0 // zk.FlagEphemeral | zk.FlagSequence
 		var acl = zk.WorldACL(perm) // zk.PermAll 表示该节点没有权限限制
-		_, err := z.conn.Create(path, nil, flags, acl)
+		_, err := z.conn.Create(path, data, flags, acl)
 		if err != nil && err != zk.ErrNodeExists {
 			log.Println(err)
 			return err
@@ -66,11 +66,11 @@ func (z *ZkClient) Create(path string, flags int32, perm int32) error {
 	return nil
 }
 
-func (z *ZkClient) CreateProtectedEphemeralSequential(path string, perm int32) error {
+func (z *ZkClient) CreateProtectedEphemeralSequential(path string, data []byte, perm int32) error {
 	exist, _ := z.Exists(path)
 	if !exist {
 		var acl = zk.WorldACL(perm) // zk.PermAll 表示该节点没有权限限制
-		_, err := z.conn.CreateProtectedEphemeralSequential(path, nil, acl)
+		_, err := z.conn.CreateProtectedEphemeralSequential(path, data, acl)
 		if err != nil && err != zk.ErrNodeExists {
 			log.Println(err)
 			return err

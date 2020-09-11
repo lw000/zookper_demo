@@ -22,6 +22,7 @@ type Service struct {
 	svrId            int32
 	client           *zkserve.ZkClient
 	quit             chan int
+	startTime        time.Time
 }
 
 func init() {
@@ -43,6 +44,7 @@ func (s *Service) init() error {
 		return err
 	}
 
+	s.startTime = time.Now()
 	return nil
 }
 
@@ -72,29 +74,24 @@ func (s *Service) watchEventCb(event zk.Event) {
 }
 
 func (s *Service) register(node string) error {
-	err := s.client.Create(consts.ZookeeperKeyLoginRoot, 0, zk.PermAll)
+	err := s.client.Create(consts.LoginServerRoot, []byte(""), 0, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-
-	s.registerNodeName = fmt.Sprintf("%s/%s", consts.ZookeeperKeyLoginRoot, node)
-	err = s.client.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
 	m := make(map[string]interface{})
 	m["svrId"] = s.svrId
 	m["register_time"] = time.Now().Format("2006-01-02 15:04:05")
+	m["startTime"] = s.startTime.Format("2006-01-02 15:04:05")
+
 	var data []byte
 	data, err = json.Marshal(m)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	err = s.client.Write(s.registerNodeName, data)
+	s.registerNodeName = fmt.Sprintf("%s/%s", consts.LoginServerRoot, node)
+	err = s.client.Create(s.registerNodeName, data, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -116,13 +113,13 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	_, err = s.client.Watch(consts.ZookeeperKeyLogin)
+	_, err = s.client.Watch(consts.LoginConfig)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = s.client.Create(consts.ZookeeperKeyLogin, 0, zk.PermRead)
+	err = s.client.Create(consts.LoginConfig, []byte(""), 0, zk.PermRead)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -142,7 +139,7 @@ func (s *Service) Start() error {
 			select {
 			case <-ticker.C:
 				// go func() {
-				// 	d, err := s.client.Children(consts.ZookeeperKeyLoginRoot)
+				// 	d, err := s.client.Children(consts.LoginServerRoot)
 				// 	if err == nil {
 				// 		log.Println(d)
 				// 	}

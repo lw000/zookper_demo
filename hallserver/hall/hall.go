@@ -56,16 +56,8 @@ func (s *Service) watchEventCb(event zk.Event) {
 	// log.Println("hall server <<<<<<<<<<<<<<<<<<<<<<")
 
 	switch event.Path {
-	case consts.ZookeeperKeyGameRoot:
-		if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
-			go func() {
-				d, err := s.client.Children(consts.ZookeeperKeyGameRoot)
-				if err == nil {
-					log.Println(d)
-				}
-			}()
-		}
-	case consts.ZookeeperKeyHall:
+	case consts.GameServerRoot:
+	case consts.HallConfig:
 		if event.Type == zk.EventNodeDataChanged {
 			go func() {
 				data, err := s.client.Read(event.Path)
@@ -102,14 +94,7 @@ func (s *Service) watchEventCb(event zk.Event) {
 }
 
 func (s *Service) register(node string) error {
-	err := s.client.Create(consts.ZookeeperKeyHallRoot, 0, zk.PermAll)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	s.registerNodeName = fmt.Sprintf("%s/%s", consts.ZookeeperKeyHallRoot, node)
-	err = s.client.Create(s.registerNodeName, zk.FlagEphemeral, zk.PermAll)
+	err := s.client.Create(consts.HallServerRoot, []byte(""), 0, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -124,7 +109,8 @@ func (s *Service) register(node string) error {
 		log.Println(err)
 		return err
 	}
-	err = s.client.Write(s.registerNodeName, data)
+	s.registerNodeName = fmt.Sprintf("%s/%s", consts.HallServerRoot, node)
+	err = s.client.Create(s.registerNodeName, data, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -145,25 +131,13 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	_, err = s.client.Watch(consts.ZookeeperKeyHall)
+	_, err = s.client.Watch(consts.HallConfig)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	err = s.client.Create(consts.ZookeeperKeyHall, 0, zk.PermRead)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	_, err = s.client.Watch(consts.ZookeeperKeyGame)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.client.Create(consts.ZookeeperKeyGame, 0, zk.PermRead)
+	err = s.client.Create(consts.HallConfig, []byte(""), 0, zk.PermRead)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -188,7 +162,7 @@ func (s *Service) Run() {
 		select {
 		case <-ticker.C:
 			// go func() {
-			// 	d, err := s.client.Children(consts.ZookeeperKeyHallRoot)
+			// 	d, err := s.client.Children(consts.HallServerRoot)
 			// 	if err == nil {
 			// 		log.Println(d)
 			// 	}
