@@ -3,25 +3,25 @@ package consts
 const (
 	ZookeeperKey = "/zk_test"
 
-	ZookeeperKeyCommon = "/zk_config_common"
+	ZookeeperKeyRoot = "/zk"
 
-	ZookeeperKeyMaster = "/zk_config_master"
+	ZookeeperKeyMaster = ZookeeperKeyRoot + "/master_server"
 
-	ZookeeperKeyHall = "/zk_config_hall"
+	ZookeeperKeyHall = ZookeeperKeyRoot + "/hall_server"
 
-	ZookeeperKeyGame = "/zk_config_game"
+	ZookeeperKeyGame = ZookeeperKeyRoot + "/game_server"
 
-	ZookeeperKeyLogin = "/zk_config_login"
+	ZookeeperKeyLogin = ZookeeperKeyRoot + "/login_server"
 
-	ZookeeperKeyGate = "/zk_config_gate"
+	ZookeeperKeyGate = ZookeeperKeyRoot + "/gate_server"
 
-	ZookeeperKeyGameRoot = "/zk_config_games"
+	ZookeeperKeyGameRoot = ZookeeperKeyRoot + "/game"
 
-	ZookeeperKeyHallRoot = "/zk_config_halls"
+	ZookeeperKeyHallRoot = ZookeeperKeyRoot + "/hall"
 
-	ZookeeperKeyLoginRoot = "/zk_config_logins"
+	ZookeeperKeyLoginRoot = ZookeeperKeyRoot + "/login"
 
-	ZookeeperKeyGateRoot = "/zk_config_gates"
+	ZookeeperKeyGateRoot = ZookeeperKeyRoot + "/gate"
 )
 
 const (

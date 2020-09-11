@@ -13,7 +13,7 @@ import (
 )
 
 type Service struct {
-	center *zkserve.ZkClient
+	client *zkserve.ZkClient
 	quit   chan int
 	count  int32
 }
@@ -24,7 +24,7 @@ func init() {
 
 func New() *Service {
 	return &Service{
-		center: zkserve.New(),
+		client: zkserve.New(),
 		quit:   make(chan int, 1),
 	}
 }
@@ -40,58 +40,22 @@ func (s *Service) watchEventCb(event zk.Event) {
 }
 
 func (s *Service) init() error {
-	err := s.center.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
+	err := s.client.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
+	err = s.initSystemConfig()
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
 	return nil
 }
 
 func (s *Service) Start() error {
 	err := s.init()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	_, err = s.center.Watch(consts.ZookeeperKeyHallRoot)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	_, err = s.center.Watch(consts.ZookeeperKeyGameRoot)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	_, err = s.center.Watch(consts.ZookeeperKeyLoginRoot)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.center.Create(consts.ZookeeperKeyHall, 0, zk.PermRead|zk.PermWrite|zk.PermDelete)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.center.Create(consts.ZookeeperKeyGame, 0, zk.PermRead|zk.PermWrite|zk.PermDelete)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.center.Create(consts.ZookeeperKeyLogin, 0, zk.PermRead|zk.PermWrite|zk.PermDelete)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = s.center.Create(consts.ZookeeperKeyGate, 0, zk.PermAll)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -115,12 +79,76 @@ func (s *Service) Start() error {
 	return nil
 }
 
+func (s *Service) initSystemConfig() error {
+	var err error
+	err = s.client.Create(consts.ZookeeperKeyRoot, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = s.client.Watch(consts.ZookeeperKeyMaster)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyMaster, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyHall, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyGame, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyLogin, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyGate, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyHallRoot, 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	err = s.client.Create(consts.ZookeeperKeyHallRoot+"/hall", 0, zk.PermAll)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	_, err = s.client.ChildrenW(consts.ZookeeperKeyHallRoot + "/hall")
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
 func (s *Service) Run() {
 	defer func() {
 		if x := recover(); x != nil {
 			log.Println(x)
 		}
-
 		log.Printf("master server exit\n")
 	}()
 
@@ -159,7 +187,7 @@ func (s *Service) modifyHallConfig() {
 			m["node"] = consts.ZookeeperKeyHall
 			data, err := json.Marshal(m)
 			if err == nil {
-				err = s.center.Write(consts.ZookeeperKeyHall, data)
+				err = s.client.Write(consts.ZookeeperKeyHall, data)
 				if err != nil {
 					log.Println(err)
 				}
@@ -193,7 +221,7 @@ func (s *Service) modifyGameConfig() {
 			m["node"] = consts.ZookeeperKeyGame
 			data, err := json.Marshal(m)
 			if err == nil {
-				err = s.center.Write(consts.ZookeeperKeyGame, data)
+				err = s.client.Write(consts.ZookeeperKeyGame, data)
 				if err != nil {
 					log.Println(err)
 				}
@@ -228,7 +256,7 @@ func (s *Service) modifyLoginConfig() {
 			m["node"] = consts.ZookeeperKeyLogin
 			data, err := json.Marshal(m)
 			if err == nil {
-				err = s.center.Write(consts.ZookeeperKeyLogin, data)
+				err = s.client.Write(consts.ZookeeperKeyLogin, data)
 				if err != nil {
 					log.Println(err)
 				}
@@ -262,7 +290,7 @@ func (s *Service) modifyGateConfig() {
 			m["node"] = consts.ZookeeperKeyGate
 			data, err := json.Marshal(m)
 			if err == nil {
-				err = s.center.Write(consts.ZookeeperKeyGate, data)
+				err = s.client.Write(consts.ZookeeperKeyGate, data)
 				if err != nil {
 					log.Println(err)
 				}
@@ -274,6 +302,6 @@ func (s *Service) modifyGateConfig() {
 }
 
 func (s *Service) Stop() {
-	s.center.Close()
+	s.client.Close()
 	close(s.quit)
 }
