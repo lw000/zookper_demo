@@ -22,7 +22,6 @@ type Service struct {
 	svrId            int32
 	client           *zkserve.ZkClient
 	quit             chan int
-	node             zkserve.ServiceNode
 }
 
 func init() {
@@ -38,38 +37,7 @@ func New() *Service {
 }
 
 func (s *Service) init() error {
-	err := s.client.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	return nil
-}
-
-func (s *Service) watchEventCb(event zk.Event) {
-	// log.Println("game server >>>>>>>>>>>>>>>>>>>>>>")
-	// log.Println("game server path:", event.Path)
-	// log.Println("game server type:", event.Type)
-	// log.Println("game server state:", event.State)
-	// log.Println("game server <<<<<<<<<<<<<<<<<<<<<<")
-
-	if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
-		go func() {
-			data, err := s.client.Read(event.Path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			log.Printf("game server id %d, data:%s\n", s.svrId, string(data))
-
-			_, err = s.client.Watch(event.Path)
-			if err != nil {
-				log.Println(err)
-				return
-			}
-		}()
-	}
+	return s.client.Connect(global.ZookeeperHosts, time.Second*60)
 }
 
 func (s *Service) register(node string) error {
@@ -79,11 +47,12 @@ func (s *Service) register(node string) error {
 		log.Println(err)
 		return err
 	}
-	m := make(map[string]interface{})
-	m["svrId"] = s.svrId
-	m["register_time"] = time.Now().Format("2006-01-02 15:04:05")
+
 	var data []byte
-	data, err = json.Marshal(m)
+	data, err = json.Marshal(map[string]interface{}{
+		"svrId":         s.svrId,
+		"register_time": time.Now().Format("2006-01-02 15:04:05"),
+	})
 	if err != nil {
 		log.Println(err)
 		return err
@@ -109,11 +78,6 @@ func (s *Service) Start() error {
 		return err
 	}
 
-	_, err = s.client.Watch(consts.GameConfig)
-	if err != nil {
-		return err
-	}
-
 	err = s.client.Create(consts.GameConfig, []byte(""), 0, zk.PermRead)
 	if err != nil {
 		return err
@@ -131,6 +95,8 @@ func (s *Service) run() {
 		}
 		log.Printf("game server [%d] exit\n", s.svrId)
 	}()
+
+	go s.WatchConfigChanged()
 
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
@@ -152,4 +118,32 @@ func (s *Service) run() {
 func (s *Service) Stop() {
 	s.client.Close()
 	close(s.quit)
+}
+
+func (s *Service) WatchConfigChanged() {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Println(x)
+		}
+		log.Printf("game server watch confiog [%d] exit\n", s.svrId)
+	}()
+
+	for {
+		ev, err := s.client.Watch(consts.GameConfig)
+		if err != nil {
+			return
+		}
+
+		select {
+		case event := <-ev:
+			if len(event.Path) > 0 && event.Type == zk.EventNodeDataChanged {
+				data, err := s.client.Read(event.Path)
+				if err != nil {
+					log.Println(err)
+					return
+				}
+				log.Printf("game server id %d, data:%s\n", s.svrId, string(data))
+			}
+		}
+	}
 }

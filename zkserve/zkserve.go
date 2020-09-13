@@ -157,12 +157,12 @@ func (z *ZkClient) Children(path string) ([]string, error) {
 	return s, nil
 }
 
-func (z *ZkClient) ChildrenW(path string) ([]string, error) {
-	s, _, _, err := z.conn.ChildrenW(path)
+func (z *ZkClient) ChildrenW(path string) ([]string, <-chan zk.Event, error) {
+	s, _, ev, err := z.conn.ChildrenW(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return s, nil
+	return s, ev, nil
 }
 
 func (s *ServiceNode) GetNode() []string {
