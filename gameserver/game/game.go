@@ -33,7 +33,7 @@ func New() *Service {
 	return &Service{
 		svrId:  atomic.AddInt32(&gameSvrId, 1),
 		client: zkserve.New(),
-		quit:   make(chan int, 1),
+		quit:   make(chan int),
 	}
 }
 
@@ -108,13 +108,13 @@ func (s *Service) run() {
 			// 		log.Println(d)
 			// 	}
 			// }()
-			var err error
-			if err = s.lock.Lock(); err == nil {
-				global.SharedData["gamedData"] = "game data"
-			}
-			if err = s.lock.Unlock(); err != nil {
-				log.Println("unlock error")
-			}
+			// var err error
+			// if err = s.lock.Lock(); err == nil {
+			// 	global.SharedData["gamedData"] = "game data"
+			// }
+			// if err = s.lock.Unlock(); err != nil {
+			// 	log.Println("unlock error")
+			// }
 		case <-s.quit:
 			return
 		}
@@ -145,6 +145,8 @@ func (s *Service) WatchConfigChanged() {
 				}
 				log.Printf("game server id %d, data:%s\n", s.svrId, string(data))
 			}
+		case <-s.quit:
+			return
 		}
 	}
 }
