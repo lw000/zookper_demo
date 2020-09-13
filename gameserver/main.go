@@ -36,6 +36,11 @@ func (p *Program) Start() error {
 			log.Println(err)
 			return err
 		}
+		// go func(svr *game.Service) {
+		// 	time.AfterFunc(time.Second*time.Duration(rand.Intn(10)+10), func() {
+		// 		svr.Stop()
+		// 	})
+		// }(svr)
 	}
 
 	return nil

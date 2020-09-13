@@ -36,12 +36,7 @@ func New() *Service {
 }
 
 func (s *Service) init() error {
-	err := s.client.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	return nil
+	return s.client.ConnectWithWatcher(global.ZookeeperHosts, time.Second*60, s.watchEventCb)
 }
 
 func (s *Service) watchEventCb(event zk.Event) {
@@ -75,17 +70,17 @@ func (s *Service) register(node string) error {
 		log.Println(err)
 		return err
 	}
-	m := make(map[string]interface{})
-	m["svrId"] = s.svrId
-	m["register_time"] = time.Now().Format("2006-01-02 15:04:05")
 	var data []byte
-	data, err = json.Marshal(m)
+	data, err = json.Marshal(map[string]interface{}{
+		"svrId":         s.svrId,
+		"register_time": time.Now().Format("2006-01-02 15:04:05"),
+	})
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
-	s.registerNodeName = fmt.Sprintf("%s/%s", consts.GateServerRoot, node)
+	s.registerNodeName = fmt.Sprintf("%s/service-%s", consts.GateServerRoot, node)
 	err = s.client.Create(s.registerNodeName, data, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
@@ -97,23 +92,19 @@ func (s *Service) register(node string) error {
 
 func (s *Service) Start() error {
 	var err error
-	err = s.init()
-	if err != nil {
+	if err = s.init(); err != nil {
 		return err
 	}
 
-	err = s.register(strconv.Itoa(int(s.svrId)))
-	if err != nil {
+	if err = s.register(strconv.Itoa(int(s.svrId))); err != nil {
 		return err
 	}
 
-	_, err = s.client.Watch(consts.GateConfig)
-	if err != nil {
+	if _, err = s.client.Watch(consts.GateConfig); err != nil {
 		return err
 	}
 
-	err = s.client.Create(consts.GateConfig, []byte(""), 0, zk.PermRead)
-	if err != nil {
+	if err = s.client.Create(consts.GateConfig, []byte(""), 0, zk.PermRead); err != nil {
 		return err
 	}
 

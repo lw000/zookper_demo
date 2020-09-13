@@ -22,6 +22,7 @@ type Service struct {
 	svrId            int32
 	client           *zkserve.ZkClient
 	quit             chan int
+	lock             *zk.Lock
 }
 
 func init() {
@@ -37,6 +38,7 @@ func New() *Service {
 }
 
 func (s *Service) init() error {
+	s.lock = s.client.Lock("game-data-lock")
 	return s.client.Connect(global.ZookeeperHosts, time.Second*60)
 }
 
@@ -57,7 +59,7 @@ func (s *Service) register(node string) error {
 		log.Println(err)
 		return err
 	}
-	s.registerNodeName = fmt.Sprintf("%s/%s", consts.GameServerRoot, node)
+	s.registerNodeName = fmt.Sprintf("%s/service-%s", consts.GameServerRoot, node)
 	err = s.client.Create(s.registerNodeName, data, zk.FlagEphemeral, zk.PermAll)
 	if err != nil {
 		log.Println(err)
@@ -68,18 +70,15 @@ func (s *Service) register(node string) error {
 
 func (s *Service) Start() error {
 	var err error
-	err = s.init()
-	if err != nil {
+	if err = s.init(); err != nil {
 		return err
 	}
 
-	err = s.register(strconv.Itoa(int(s.svrId)))
-	if err != nil {
+	if err = s.register(strconv.Itoa(int(s.svrId))); err != nil {
 		return err
 	}
 
-	err = s.client.Create(consts.GameConfig, []byte(""), 0, zk.PermRead)
-	if err != nil {
+	if err = s.client.Create(consts.GameConfig, []byte(""), 0, zk.PermRead); err != nil {
 		return err
 	}
 
@@ -109,15 +108,17 @@ func (s *Service) run() {
 			// 		log.Println(d)
 			// 	}
 			// }()
+			var err error
+			if err = s.lock.Lock(); err == nil {
+				global.SharedData["gamedData"] = "game data"
+			}
+			if err = s.lock.Unlock(); err != nil {
+				log.Println("unlock error")
+			}
 		case <-s.quit:
 			return
 		}
 	}
-}
-
-func (s *Service) Stop() {
-	s.client.Close()
-	close(s.quit)
 }
 
 func (s *Service) WatchConfigChanged() {
@@ -146,4 +147,9 @@ func (s *Service) WatchConfigChanged() {
 			}
 		}
 	}
+}
+
+func (s *Service) Stop() {
+	s.client.Close()
+	close(s.quit)
 }

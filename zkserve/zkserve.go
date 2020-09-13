@@ -165,6 +165,10 @@ func (z *ZkClient) ChildrenW(path string) ([]string, <-chan zk.Event, error) {
 	return s, ev, nil
 }
 
+func (z *ZkClient) Lock(path string) *zk.Lock {
+	return zk.NewLock(z.conn, path, zk.WorldACL(zk.PermAll))
+}
+
 func (s *ServiceNode) GetNode() []string {
 
 	return nil
