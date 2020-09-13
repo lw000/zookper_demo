@@ -2,7 +2,9 @@ package main
 
 import (
 	"demo/zookper_demo/gameserver/game"
+	"encoding/json"
 	"github.com/judwhite/go-svc/svc"
+	"io/ioutil"
 	"log"
 )
 
@@ -55,6 +57,14 @@ func (p *Program) Stop() error {
 }
 
 func main() {
+	data, err := ioutil.ReadFile("conf.json")
+	if err != nil {
+		log.Panic(err)
+	}
+	err = json.Unmarshal(data, &ServiceConf)
+	if err != nil {
+		log.Panic(err)
+	}
 	var pro Program
 	if err := svc.Run(&pro); err != nil {
 		log.Fatalln(err)
