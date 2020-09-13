@@ -1,19 +1,32 @@
 package main
 
 import (
-	"demo/zookper_demo/kfka"
-	"demo/zookper_demo/masterserver/master"
 	"github.com/judwhite/go-svc/svc"
 	"log"
+	"net"
 	"time"
 )
 
-var (
-	logger *log.Logger
-)
+// var (
+// 	logger *log.Logger
+// )
+
+func localIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
+}
 
 type Program struct {
-	masterService *master.Service
 }
 
 func (p *Program) Init(env svc.Environment) error {
@@ -23,33 +36,16 @@ func (p *Program) Init(env svc.Environment) error {
 
 	}
 
-	p.masterService = master.New()
-
 	return nil
 }
 
 func (p *Program) Start() error {
-	var err error
-
-	err = p.masterService.Start()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	err = kfka.Conn()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	defer kfka.Close()
-
+	log.Println("localIP:", localIP())
 	return nil
 }
 
 func (p *Program) Stop() error {
-	p.masterService.Stop()
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(time.Millisecond * 10)
 	return nil
 }
 
