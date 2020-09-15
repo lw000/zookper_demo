@@ -6,6 +6,7 @@ import (
 	"github.com/judwhite/go-svc/svc"
 	"io/ioutil"
 	"log"
+	"sync"
 )
 
 var (
@@ -61,10 +62,24 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	err = json.Unmarshal(data, &ServiceConf)
+	pool := sync.Pool{
+		New: func() interface{} {
+			return ServiceConfig{}
+		},
+	}
+
+	pool.Put(ServiceConfig{})
+	pool.Put(ServiceConfig{})
+	pool.Put(ServiceConfig{})
+	pool.Put(ServiceConfig{})
+
+	v := pool.Get().(ServiceConfig)
+	err = json.Unmarshal(data, &v)
 	if err != nil {
 		log.Panic(err)
 	}
+	pool.Put(v)
+
 	var pro Program
 	if err := svc.Run(&pro); err != nil {
 		log.Fatalln(err)

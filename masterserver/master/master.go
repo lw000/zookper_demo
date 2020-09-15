@@ -3,7 +3,7 @@ package master
 import (
 	"demo/zookper_demo/consts"
 	"demo/zookper_demo/global"
-	"demo/zookper_demo/zkserve"
+	"demo/zookper_demo/zkc"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/samuel/go-zookeeper/zk"
@@ -13,7 +13,7 @@ import (
 )
 
 type Service struct {
-	client *zkserve.ZkClient
+	client *zkc.ZkClient
 	quit   chan int
 	count  int32
 }
@@ -24,7 +24,7 @@ func init() {
 
 func New() *Service {
 	return &Service{
-		client: zkserve.New(),
+		client: zkc.New(),
 		quit:   make(chan int, 1),
 	}
 }

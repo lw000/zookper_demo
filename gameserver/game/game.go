@@ -3,7 +3,7 @@ package game
 import (
 	"demo/zookper_demo/consts"
 	"demo/zookper_demo/global"
-	"demo/zookper_demo/zkserve"
+	"demo/zookper_demo/zkc"
 	"encoding/json"
 	"fmt"
 	"github.com/samuel/go-zookeeper/zk"
@@ -20,7 +20,7 @@ var (
 type Service struct {
 	registerNodeName string
 	svrId            int32
-	client           *zkserve.ZkClient
+	client           *zkc.ZkClient
 	quit             chan int
 	lock             *zk.Lock
 }
@@ -32,7 +32,7 @@ func init() {
 func New() *Service {
 	return &Service{
 		svrId:  atomic.AddInt32(&gameSvrId, 1),
-		client: zkserve.New(),
+		client: zkc.New(),
 		quit:   make(chan int),
 	}
 }

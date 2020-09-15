@@ -3,7 +3,7 @@ package hall
 import (
 	"demo/zookper_demo/consts"
 	"demo/zookper_demo/global"
-	"demo/zookper_demo/zkserve"
+	"demo/zookper_demo/zkc"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -21,7 +21,7 @@ var (
 type Service struct {
 	registerNodeName string
 	svrId            int32
-	client           *zkserve.ZkClient
+	client           *zkc.ZkClient
 	quit             chan int
 	rootName         string
 }
@@ -33,7 +33,7 @@ func init() {
 func New() *Service {
 	return &Service{
 		svrId:  atomic.AddInt32(&hallSvrId, 1),
-		client: zkserve.New(),
+		client: zkc.New(),
 		quit:   make(chan int, 1),
 	}
 }

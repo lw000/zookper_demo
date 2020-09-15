@@ -1,4 +1,4 @@
-package zkserve
+package zkc
 
 import (
 	"fmt"
