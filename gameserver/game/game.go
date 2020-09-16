@@ -52,8 +52,10 @@ func (s *Service) register(node string) error {
 
 	var data []byte
 	data, err = json.Marshal(map[string]interface{}{
-		"svrId":         s.svrId,
-		"register_time": time.Now().Format("2006-01-02 15:04:05"),
+		"svrId":        s.svrId,
+		"registerTime": time.Now().Format("2006-01-02 15:04:05"),
+		"svrAddr":      "127.0.0.1",
+		"svrPort":      5898,
 	})
 	if err != nil {
 		log.Println(err)
@@ -126,7 +128,7 @@ func (s *Service) WatchConfigChanged() {
 		if x := recover(); x != nil {
 			log.Println(x)
 		}
-		log.Printf("game server watch confiog [%d] exit\n", s.svrId)
+		log.Printf("game server watch config [%d] exit\n", s.svrId)
 	}()
 
 	for {

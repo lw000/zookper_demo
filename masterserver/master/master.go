@@ -154,7 +154,7 @@ func (s *Service) RunGin() {
 		log.Printf("master server exit\n")
 	}()
 
-	// gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.ReleaseMode)
 	engine := gin.Default()
 	engine.GET("/api/sync", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "sync config success", "data": gin.H{}})
@@ -270,7 +270,10 @@ func (s *Service) WatchGameServerNodeChanged() {
 		}
 
 		select {
-		case event := <-ev:
+		case event, ok := <-ev:
+			if !ok {
+				return
+			}
 			if len(event.Path) > 0 && event.Type == zk.EventNodeChildrenChanged {
 				childes, err := s.client.Children(event.Path)
 				if err == nil {

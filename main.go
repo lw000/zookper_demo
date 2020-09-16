@@ -1,10 +1,13 @@
 package main
 
 import (
+	"demo/zookper_demo/tasks"
+	"encoding/json"
+	// "github.com/flier/curator.go"
+	"github.com/heteddy/delaytask-go/delaytask"
 	"github.com/judwhite/go-svc/svc"
 	"log"
 	"net"
-	"time"
 )
 
 // var (
@@ -27,6 +30,7 @@ func localIP() string {
 }
 
 type Program struct {
+	// client curator.CuratorFramework
 }
 
 func (p *Program) Init(env svc.Environment) error {
@@ -41,11 +45,40 @@ func (p *Program) Init(env svc.Environment) error {
 
 func (p *Program) Start() error {
 	log.Println("localIP:", localIP())
+
+	engine := delaytask.NewEngine("1s", 10, "redis://@192.168.0.115:6379/4",
+		"messageQ", "remote-task0:")
+	engine.AddTaskCreator("OncePingTask", func(task string) delaytask.Runner {
+		p := &tasks.OncePingTask{}
+		if err := json.Unmarshal([]byte(task), p); err != nil {
+		} else {
+			return p
+		}
+		return nil
+	})
+	engine.AddTaskCreator("PeriodPingTask", func(task string) delaytask.Runner {
+		t := &tasks.PeriodPingTask{}
+		if err := json.Unmarshal([]byte(task), t); err != nil {
+			return nil
+		} else {
+			return t
+		}
+	})
+	engine.Start()
+
+	// retryPolicy := curator.NewExponentialBackoffRetry(time.Second, 3, 15*time.Second)
+	// connString := "192.168.0.115:2182"
+	// p.client = curator.NewClient(connString, retryPolicy)
+	// var err error
+	// if err = p.client.Start(); err != nil {
+	// 	return err
+	// }
+
 	return nil
 }
 
 func (p *Program) Stop() error {
-	time.Sleep(time.Millisecond * 10)
+	// _ = p.client.Close()
 	return nil
 }
 
